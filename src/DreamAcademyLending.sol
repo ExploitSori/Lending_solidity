@@ -18,17 +18,27 @@ struct deposit_st{
 	uint eth_val;
 	uint usdc_val;
 	uint usdc;
+	uint eth_lblock;
+	uint usdc_lblock;
 }
 
 contract DreamAcademyLending is IDreamAcademyLending {
 	mapping(address=>deposit_st) deposit_list;
 	mapping(address=>deposit_st) loan_list;
 	mapping(address=>deposit_st) loan_list_bak;
+	uint256 totalDeposit_eth;
+	uint256 totalDeposit_usdc;
+	uint256 totalBorrow_eth;
+	uint256 totalBorrow_usdc;
 	IPriceOracle oracle;
 	IERC20 usdc;
 	constructor(IPriceOracle _oracle, address _usdc){
 		usdc = IERC20(_usdc);
 		oracle = _oracle;
+		totalDeposit_usdc = 0;
+		totalDeposit_eth = 0;
+		totalBorrow_eth = 0;
+		totalBorrow_usdc = 0;
 	}
 	function chkTk(address token_addr) internal returns(bool){
 		bool ret;
@@ -48,12 +58,14 @@ contract DreamAcademyLending is IDreamAcademyLending {
 			require(amount <= msg.value, "val error");
 			deposit_list[msg.sender].eth = msg.value;
 			deposit_list[msg.sender].eth_val = oracle.getPrice(address(0));
+			deposit_list[msg.sender].eth_lblock = block.number;
 		}
 		else{
 			usdc.transferFrom(msg.sender, address(this), amount);
 			deposit_list[msg.sender].usdc = amount;
 			deposit_list[msg.sender].usdc_val = oracle.getPrice(address(usdc));
-			
+			deposit_list[msg.sender].usdc_lblock = block.number;
+			totalDeposit_usdc += amount;
 		}
 	}
 	function calcTk(uint256 land_value) internal returns(uint256){
@@ -84,9 +96,10 @@ contract DreamAcademyLending is IDreamAcademyLending {
 				loan_list[msg.sender].eth += amount;
 				loan_list[msg.sender].eth_val = eth_value;
 				//loan_list_bak[msg.sender].eth += amount;
-			//	deposit_list[msg.sender].usdc -= (pwan / usdc_value ) ;
+			//	deposit_list[msg.sender].usdc -= (pwan / usdc_value );
 				usdc.transferFrom(msg.sender, address(this), pwan);
 				address(msg.sender).call{value:amount}("");
+				totalBorrow_eth += amount;
 			}
 			else{
 				revert("pwan error");
@@ -110,6 +123,7 @@ contract DreamAcademyLending is IDreamAcademyLending {
 				//loan_list_bak[msg.sender].usdc += amount;
 			//	deposit_list[msg.sender].eth -= (pwan / eth_value);
 				usdc.transfer(msg.sender, amount);
+				totalBorrow_usdc += amount;
 			}
 			else{
 				revert("pwan error");
@@ -197,8 +211,36 @@ contract DreamAcademyLending is IDreamAcademyLending {
 		// ???
 		usdc.transferFrom(msg.sender, address(this), msg.value);
 	}
+	function calc_func(uint principal, uint range) internal returns(uint){
+		uint rate = 1001;
+		uint final_amount = principal;
+		for(uint i=0;i<range;i++){
+			final_amount = (final_amount * rate) / 1000;
+		}
+		console.log("final");
+		console.log(final_amount);
+		return final_amount;
+	}
 	function getAccruedSupplyAmount(address a1)external payable returns(uint){
 		uint ret = 0;
+		bool chk = chkTk(a1);
+		if(chk){ // eth
+
+
+		}
+		else{
+			uint256 per = deposit_list[msg.sender].usdc * 1 ether  / totalDeposit_usdc;
+			uint diff = (block.number - deposit_list[msg.sender].usdc_lblock) / 7200;
+			console.log(per);				
+			console.log(ret);
+			console.log(diff);
+			uint tmp = calc_func(totalBorrow_usdc, diff);
+			uint rest = ((tmp/ 1e18) - totalBorrow_usdc / 1e18);
+			uint per_rest = (rest * per / 1e18);
+			console.log(deposit_list[msg.sender].usdc);
+			console.log(deposit_list[msg.sender].usdc / 1e18 + per_rest);
+			ret = (deposit_list[msg.sender].usdc / 1e18 + per_rest) * 1 ether;
+		}
 		return ret;
 	}
 }
