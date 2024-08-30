@@ -205,10 +205,24 @@ contract DreamAcademyLending is IDreamAcademyLending {
 	}
 	function withdraw(address token_addr, uint256 amount) external{
 		bool chk = chkTk(token_addr);
+		uint eth_val = oracle.getPrice(address(0));
+		uint usdc_val = oracle.getPrice(address(usdc));
+
 		if(chk){ // eth withdraw
-			uint total_value = deposit_list[msg.sender].eth * deposit_list[msg.sender].eth_val;
-			total_value -= loan_list[msg.sender].usdc * loan_list[msg.sender].usdc_val;
+			console.log("1231231");
+			uint total_value = deposit_list[msg.sender].eth * eth_val;//deposit_list[msg.sender].eth_val;
+			console.log(deposit_list[msg.sender].eth);
+			console.log(deposit_list[msg.sender].eth_val);
+
+			console.log("totalValue");
+			console.log(total_value);
+			console.log(loan_list[msg.sender].usdc);
+			console.log(loan_list[msg.sender].usdc_val);
+			console.log(loan_list[msg.sender].usdc * loan_list[msg.sender].usdc_val);
+			total_value -= loan_list[msg.sender].usdc * usdc_val;//loan_list[msg.sender].usdc_val;
+			console.log("1231231");
 			total_value = total_value / oracle.getPrice(address(0));
+			console.log("1231231");
 			require(deposit_list[msg.sender].eth >= amount, "withdraw error, not money");
 			require(total_value >= amount, "locked");
 			deposit_list[msg.sender].eth -= amount;
@@ -241,7 +255,7 @@ contract DreamAcademyLending is IDreamAcademyLending {
 		console.log(final_amount);
 		return final_amount;
 	}
-	function getAccruedSupplyAmount(address a1)external payable returns(uint){
+	function getAccruedSupplyAmount(address a1)public payable returns(uint){
 		uint ret = 0;
 		bool chk = chkTk(a1);
 		if(chk){ // eth
