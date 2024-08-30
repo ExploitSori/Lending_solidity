@@ -20,6 +20,8 @@ struct deposit_st{
 	uint usdc;
 	uint eth_lblock;
 	uint usdc_lblock;
+	uint usdc_fee;
+	uint acc_lblock;
 }
 
 contract DreamAcademyLending is IDreamAcademyLending {
@@ -201,8 +203,14 @@ contract DreamAcademyLending is IDreamAcademyLending {
 			address(msg.sender).call{value:amount}("");
 		}
 		else{ // usdc withdraw
-			require(deposit_list[msg.sender].usdc >= amount, "withdraw error, not money");
-			deposit_list[msg.sender].usdc -= amount;
+			uint user_balance = usdc.balanceOf(msg.sender);
+			console.log(user_balance);
+			console.log(deposit_list[msg.sender].usdc + deposit_list[msg.sender].usdc_fee);
+			require((deposit_list[msg.sender].usdc + deposit_list[msg.sender].usdc_fee) >= amount, "withdraw error, not money");
+			console.log("123123");
+			deposit_list[msg.sender].usdc += deposit_list[msg.sender].usdc_fee;
+			deposit_list[msg.sender].usdc_fee = 0;
+			deposit_list[msg.sender].usdc -= amount ;
 			usdc.transfer(msg.sender, amount);
 		}
 
@@ -230,16 +238,17 @@ contract DreamAcademyLending is IDreamAcademyLending {
 		}
 		else{
 			uint256 per = deposit_list[msg.sender].usdc * 1 ether  / totalDeposit_usdc;
-			uint diff = (block.number - deposit_list[msg.sender].usdc_lblock) / 7200;
-			console.log(per);				
-			console.log(ret);
-			console.log(diff);
+			if(deposit_list[msg.sender].acc_lblock == 0){
+				deposit_list[msg.sender].acc_lblock = deposit_list[msg.sender].usdc_lblock;
+			}
+			uint diff = (block.number - deposit_list[msg.sender].acc_lblock) / 7200;
 			uint tmp = calc_func(totalBorrow_usdc, diff);
 			uint rest = ((tmp/ 1e18) - totalBorrow_usdc / 1e18);
 			uint per_rest = (rest * per / 1e18);
 			console.log(deposit_list[msg.sender].usdc);
 			console.log(deposit_list[msg.sender].usdc / 1e18 + per_rest);
 			ret = (deposit_list[msg.sender].usdc / 1e18 + per_rest) * 1 ether;
+			deposit_list[msg.sender].usdc_fee = per_rest * 1 ether;
 		}
 		return ret;
 	}
