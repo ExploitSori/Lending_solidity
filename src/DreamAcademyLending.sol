@@ -148,11 +148,23 @@ contract DreamAcademyLending is IDreamAcademyLending {
 			loan_list[msg.sender].eth -= amount;
 		}
 		else{
-			require(loan_list[msg.sender].usdc >= amount, "no repay");
 			require(usdc.balanceOf(msg.sender) >= amount, "no val");
 			require(usdc.allowance(msg.sender, address(this)) >= amount, "");
+			uint diff = block.number - loan_list[msg.sender].usdc_lblock;
+			console.log(diff);
+			if(diff != 1 && (diff /7200 == 0)){
+				diff = diff / 7200 +1;
+			}
+			else{
+				diff = 0;
+			}
+			console.log(diff);
+			uint tmpFee = calc_func(loan_list[msg.sender].usdc, diff) - loan_list[msg.sender].usdc;
+			console.log((loan_list[msg.sender].usdc + tmpFee/2));
+			require(loan_list[msg.sender].usdc + tmpFee >= amount, "no repay");
 			usdc.transferFrom(msg.sender, address(this), amount);
-			loan_list[msg.sender].usdc -= amount;
+			loan_list[msg.sender].usdc -= (amount - tmpFee/2);
+
 		}
 
 	}
